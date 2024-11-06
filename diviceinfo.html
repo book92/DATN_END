@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thông Tin Thiết Bị</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        .info-section {
+            margin-bottom: 25px;
+        }
+        .info-label {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #34495e;
+            font-size: 18px;
+        }
+        .info-value {
+            background-color: #ecf0f1;
+            padding: 12px;
+            border-radius: 6px;
+            border: 1px solid #bdc3c7;
+            font-size: 16px;
+        }
+        .input-field {
+            width: 100%;
+            padding: 12px;
+            margin-top: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #bdc3c7;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        .button {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 18px;
+            width: 100%;
+            transition: background-color 0.3s ease;
+        }
+        .button:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Thông Tin Thiết Bị</h1>
+        
+        <div class="info-section">
+            <div class="info-label">Tên thiết bị:</div>
+            <div id="deviceName" class="info-value"></div>
+        </div>
+        
+        <div class="info-section">
+            <div class="info-label">Người dùng:</div>
+            <div id="deviceUser" class="info-value"></div>
+        </div>
+        
+        <div class="info-section">
+            <div class="info-label">Loại thiết bị:</div>
+            <div id="deviceType" class="info-value"></div>
+        </div>
+        
+        <div class="info-section">
+            <div class="info-label">Thông số kỹ thuật:</div>
+            <div id="deviceSpecs" class="info-value"></div>
+        </div>
+        
+        <div class="info-section">
+            <div class="info-label">Ghi chú:</div>
+            <div id="deviceNotes" class="info-value"></div>
+        </div>
+        
+        <div class="info-section">
+            <div class="info-label">Phòng ban:</div>
+            <div id="departmentName" class="info-value"></div>
+        </div>
+        
+        <div class="info-section">
+            <div class="info-label">Người báo lỗi:</div>
+            <input type="text" id="userName" class="input-field" placeholder="Nhập tên người báo lỗi">
+        </div>
+        
+        <div class="info-section">
+            <div class="info-label">Mô tả lỗi:</div>
+            <textarea id="errorDescription" class="input-field" placeholder="Mô tả lỗi" rows="4"></textarea>
+        </div>
+        
+        <button id="reportErrorBtn" class="button">Báo lỗi</button>
+    </div>
+
+    <script>
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyApBWUABXIusWxrlvdBt9ttvTd0uSISTQY",
+            projectId: "device-management-43211",
+            storageBucket: "device-management-43211.appspot.com",
+            appId: "com.device_management",
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        // Function to get URL parameter
+        function getUrlParameter(name) {
+            name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+            var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+            var results = regex.exec(location.search);
+            return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+        }
+
+        // Function to safely display device information
+        function displayDeviceInfo(id, value) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.innerHTML = value || 'Không có thông tin';
+            }
+        }
+
+        // Function to format specifications
+        function formatSpecs(specs) {
+            return Object.entries(specs)
+                .map(([key, value]) => `${key}: ${value}`)
+                .join('<br>');
+        }
+
+        // Get device information from URL
+        const dataParam = getUrlParameter('data');
+        let deviceData;
+
+        try {
+            deviceData = JSON.parse(decodeURIComponent(dataParam));
+            console.log("Parsed device data:", deviceData);
+
+            // Display device information
+            displayDeviceInfo('deviceName', deviceData.name);
+            
+            // Hiển thị cả tên và email người dùng
+            let userInfo = '';
+            if (deviceData.user) {
+                userInfo += deviceData.user;
+            }
+            if (deviceData.userEmail) {
+                userInfo += userInfo ? ` (${deviceData.userEmail})` : deviceData.userEmail;
+            }
+            displayDeviceInfo('deviceUser', userInfo || 'Không có thông tin');
+
+            displayDeviceInfo('deviceType', deviceData.type);
+            displayDeviceInfo('deviceNotes', deviceData.notes);
+            displayDeviceInfo('departmentName', deviceData.department);
+
+            // Handle device specifications
+            if (deviceData.specs && Object.keys(deviceData.specs).length > 0) {
+                displayDeviceInfo('deviceSpecs', formatSpecs(deviceData.specs));
+            } else {
+                displayDeviceInfo('deviceSpecs', 'Không có thông tin');
+            }
+        } catch (error) {
+            console.error("Error parsing device data:", error);
+            // Display error message if data parsing fails
+            ['deviceName', 'deviceUser', 'deviceType', 'deviceSpecs', 'deviceNotes', 'departmentName'].forEach(id => {
+                displayDeviceInfo(id, 'Lỗi khi đọc dữ liệu');
+            });
+        }
+
+        document.getElementById('reportErrorBtn').addEventListener('click', function() {
+            const errorDescription = document.getElementById('errorDescription').value;
+            const userName = document.getElementById('userName').value;
+
+            if (!errorDescription || !userName) {
+                alert('Vui lòng nhập đầy đủ thông tin');
+                return;
+            }
+
+            const today = new Date();
+            const reportday = today.toISOString().split('T')[0];
+
+            db.collection("ERROR").add({
+                deviceName: deviceData.name || 'Không có thông tin',
+                deviceType: deviceData.type || 'Không có thông tin',
+                specifications: deviceData.specs || {},
+                note: deviceData.notes || 'Không có thông tin',
+                description: errorDescription,
+                reportday: reportday,
+                userreport: userName,
+                deviceRoom: deviceData.department || 'Không có thông tin',
+                state: "Chưa sửa",
+                fixday: ""
+            })
+            .then((docRef) => {
+                alert("Lỗi đã được báo cáo thành công!");
+                document.getElementById('errorDescription').value = '';
+                document.getElementById('userName').value = '';
+            })
+            .catch((error) => {
+                console.error("Error adding document: ", error);
+                alert("Có lỗi xảy ra khi báo cáo. Vui lòng thử lại.");
+            });
+        });
+    </script>
+</body>
+</html>
