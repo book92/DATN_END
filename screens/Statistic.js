@@ -55,6 +55,8 @@ const Statistic = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedChartData, setSelectedChartData] = useState(null);
   const [showStaticList, setShowStaticList] = useState(false);
+  const [selectedStartDate, setSelectedStartDate] = useState(new Date(new Date().setMonth(new Date().getMonth() - 1)));
+  const [selectedEndDate, setSelectedEndDate] = useState(new Date());
 
 
   const screenWidth = Dimensions.get('screen').width;
@@ -215,18 +217,109 @@ const Statistic = () => {
     setShowStaticList(false);
   };
 
+  const formatDate = (date) => {
+    return date.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
   const handleExportToExcel = (data, title) => {
+    if (title === "Thống kê lỗi theo thiết bị") {
+      Alert.alert(
+        "Xuất Excel",
+        `Chọn khoảng thời gian để xuất dữ liệu\n\nTừ ngày: ${formatDate(selectedStartDate)}\nĐến ngày: ${formatDate(selectedEndDate)}`,
+        [
+          {
+            text: "Hủy",
+            style: "cancel"
+          },
+         
+          {
+            text: "Xuất Excel",
+            onPress: () => handleExportConfirmation(data, title, selectedStartDate, selectedEndDate)
+          },
+          {
+            text: "Chọn khoảng thời gian",
+            onPress: () => {
+              Alert.alert(
+                "Chọn khoảng thời gian",
+                "Vui lòng chọn khoảng thời gian",
+                [
+                  {
+                    text: "1 tuần gần đây",
+                    onPress: () => {
+                      const end = new Date();
+                      const start = new Date();
+                      start.setDate(end.getDate() - 7);
+                      setSelectedStartDate(start);
+                      setSelectedEndDate(end);
+                      handleExportConfirmation(data, title, start, end);
+                    }
+                  },
+                  {
+                    text: "1 tháng gần đây",
+                    onPress: () => {
+                      const end = new Date();
+                      const start = new Date();
+                      start.setMonth(end.getMonth() - 1);
+                      setSelectedStartDate(start);
+                      setSelectedEndDate(end);
+                      handleExportConfirmation(data, title, start, end);
+                    }
+                  },
+                  {
+                    text: "3 tháng gần đây",
+                    onPress: () => {
+                      const end = new Date();
+                      const start = new Date();
+                      start.setMonth(end.getMonth() - 3);
+                      setSelectedStartDate(start);
+                      setSelectedEndDate(end);
+                      handleExportConfirmation(data, title, start, end);
+                    }
+                  },
+                  {
+                    text: "Hủy",
+                    style: "cancel"
+                  }
+                ]
+              );
+            }
+          },
+        ]
+      );
+    } else {
+      Alert.alert(
+        "Xuất Excel",
+        "Bạn muốn xuất excel bảng thông kê?",
+        [
+          {
+            text: "Hủy",
+            style: "cancel"
+          },
+          { 
+            text: "Xác nhận", 
+            onPress: () => exportToExcel(data, title)
+          }
+        ]
+      );
+    }
+  };
+
+  const handleExportConfirmation = (data, title, startDate, endDate) => {
     Alert.alert(
-      "Xuất Excel",
-      "Bạn muốn xuất excel bảng thông kê?",
+      "Xác nhận xuất Excel",
+      `Bạn muốn xuất Excel cho khoảng thời gian:\nTừ ngày: ${formatDate(startDate)}\nĐến ngày: ${formatDate(endDate)}?`,
       [
         {
           text: "Hủy",
           style: "cancel"
         },
-        { 
-          text: "Xác nhận", 
-          onPress: () => exportToExcel(data, title)
+        {
+          text: "Xác nhận",
+          onPress: () => exportToExcel(data, title, startDate, endDate)
         }
       ]
     );
@@ -257,11 +350,11 @@ const Statistic = () => {
     }
   };
 
-  const exportToExcel = async (data, title) => {
+  const exportToExcel = async (data, title, startDate, endDate) => {
     console.log('Starting Excel export...');
     try {
       console.log('Preparing Excel data...');
-      const additionalData = await fetchAdditionalData(data, title);
+      const additionalData = await fetchAdditionalData(data, title, startDate, endDate);
 
       let excelData;
       switch (title) {
@@ -408,7 +501,7 @@ const Statistic = () => {
     }
   };
 
-  const fetchAdditionalData = async (data, title) => {
+  const fetchAdditionalData = async (data, title, startDate, endDate) => {
     const additionalData = [];
     try {
       switch (title) {

@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import firestore from '@react-native-firebase/firestore';
-import { Searchbar, Button } from 'react-native-paper';
+import { Searchbar, Button, IconButton } from 'react-native-paper';
+import * as XLSX from 'xlsx';
+import RNFS from 'react-native-fs';
+import { Alert } from 'react-native';
 
 const BLUE_COLOR = '#0000CD';
 
@@ -10,6 +13,8 @@ const StaticList = ({ chartData, onClose }) => {
   const [items, setItems] = useState([]);
   const [filteredItems, setFilteredItems] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStartDate, setSelectedStartDate] = useState(new Date(new Date().setMonth(new Date().getMonth() - 1)));
+  const [selectedEndDate, setSelectedEndDate] = useState(new Date());
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -124,6 +129,114 @@ const StaticList = ({ chartData, onClose }) => {
     );
   };
 
+  const formatDate = (date) => {
+    return date.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  };
+
+  const handleExportToExcel = async () => {
+    const title = `lỗi của ${chartData.label}`;
+    if (chartData.type === 'error') {
+      Alert.alert(
+        "Xuất Excel",
+        `Chọn khoảng thời gian để xuất dữ liệu\n\nTừ ngày: ${formatDate(selectedStartDate)}\nĐến ngày: ${formatDate(selectedEndDate)}`,
+        [
+          {
+            text: "Hủy",
+            style: "cancel"
+          },
+          {
+            text: "Xuất Excel",
+            onPress: () => handleExportConfirmation(filteredItems, title, selectedStartDate, selectedEndDate)
+          },
+          {
+            text: "Chọn khoảng thời gian",
+            onPress: () => {
+              Alert.alert(
+                "Chọn khoảng thời gian",
+                "Vui lòng chọn khoảng thời gian",
+                [
+                  {
+                    text: "1 tuần gần đây",
+                    onPress: () => {
+                      const end = new Date();
+                      const start = new Date();
+                      start.setDate(end.getDate() - 7);
+                      setSelectedStartDate(start);
+                      setSelectedEndDate(end);
+                      handleExportConfirmation(filteredItems, title, start, end);
+                    }
+                  },
+                  {
+                    text: "1 tháng gần đây",
+                    onPress: () => {
+                      const end = new Date();
+                      const start = new Date();
+                      start.setMonth(end.getMonth() - 1);
+                      setSelectedStartDate(start);
+                      setSelectedEndDate(end);
+                      handleExportConfirmation(filteredItems, title, start, end);
+                    }
+                  },
+                  {
+                    text: "3 tháng gần đây",
+                    onPress: () => {
+                      const end = new Date();
+                      const start = new Date();
+                      start.setMonth(end.getMonth() - 3);
+                      setSelectedStartDate(start);
+                      setSelectedEndDate(end);
+                      handleExportConfirmation(filteredItems, title, start, end);
+                    }
+                  },
+                  {
+                    text: "Hủy",
+                    style: "cancel"
+                  }
+                ]
+              );
+            }
+          }
+        ]
+      );
+    } else {
+      Alert.alert(
+        "Xuất Excel",
+        `Bạn muốn xuất excel ${title}?`,
+        [
+          {
+            text: "Hủy",
+            style: "cancel"
+          },
+          {
+            text: "Xác nhận",
+            onPress: () => exportToExcel(filteredItems, title)
+          }
+        ]
+      );
+    }
+  };
+
+  const handleExportConfirmation = (data, title, startDate, endDate) => {
+    Alert.alert(
+      "Xác nhận xuất Excel",
+      `Bạn muốn xuất Excel cho khoảng thời gian:\nTừ ngày: ${formatDate(startDate)}\nĐến ngày: ${formatDate(endDate)}?`,
+      [
+        {
+          text: "Hủy",
+          style: "cancel"
+        },
+        {
+          text: "Xác nhận",
+          onPress: () => exportToExcel(data, title, startDate, endDate)
+        }
+      ]
+    );
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.headerText}>
@@ -132,16 +245,25 @@ const StaticList = ({ chartData, onClose }) => {
           chartData.type === 'userByRoom' ? 'người dùng' : 'thiết bị'
         } của ${chartData.label}`}
       </Text>
-      <Searchbar
-        placeholder="Tìm kiếm..."
-        onChangeText={handleSearch}
-        value={searchQuery}
-        style={styles.searchBar}
-        inputStyle={styles.searchBarInput}
-        iconColor={BLUE_COLOR}
-        placeholderTextColor={BLUE_COLOR}
-        theme={{ colors: { primary: BLUE_COLOR } }}
-      />
+      <View style={styles.headerContainer}>
+        <Searchbar
+          placeholder="Tìm kiếm..."
+          onChangeText={handleSearch}
+          value={searchQuery}
+          style={[styles.searchBar, { flex: 1 }]}
+          inputStyle={styles.searchBarInput}
+          iconColor={BLUE_COLOR}
+          placeholderTextColor={BLUE_COLOR}
+          theme={{ colors: { primary: BLUE_COLOR } }}
+        />
+        <IconButton
+          icon="microsoft-excel"
+          size={24}
+          onPress={handleExportToExcel}
+          style={styles.exportButton}
+          color={BLUE_COLOR}
+        />
+      </View>
       <FlatList
         data={filteredItems}
         renderItem={renderItem}
@@ -171,7 +293,8 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   searchBar: {
-    margin: 20,
+    flex: 1,
+    marginRight: 10,
     backgroundColor: '#F0F0F0',
     borderWidth: 1,
     borderColor: BLUE_COLOR,
@@ -244,6 +367,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
     color: 'red',
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginBottom: 10,
+  },
+  exportButton: {
+    margin: 0,
   },
 });
 
