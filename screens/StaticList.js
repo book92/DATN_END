@@ -138,7 +138,13 @@ const StaticList = ({ chartData, onClose }) => {
   };
 
   const handleExportToExcel = async () => {
-    const title = `lỗi của ${chartData.label}`;
+    const title = `${
+      chartData.type === 'error' ? 'lỗi' : 
+      chartData.type === 'userByRoom' ? 'người dùng' : 
+      chartData.type === 'deviceByRoom' || chartData.type === 'deviceByUser' ? 'thiết bị' : 
+      'dữ liệu'
+    } của ${chartData.label}`;
+
     if (chartData.type === 'error') {
       Alert.alert(
         "Xuất Excel",
@@ -213,7 +219,7 @@ const StaticList = ({ chartData, onClose }) => {
           },
           {
             text: "Xác nhận",
-            onPress: () => exportToExcel(filteredItems, title)
+            onPress: () => exportToExcel(filteredItems, title, selectedStartDate, selectedEndDate)
           }
         ]
       );
