@@ -111,7 +111,16 @@ const DeviceDetail = ({ route, navigation }) => {
   const handleSave = async () => {
     try {
       setLoading(true);
-
+      
+      // Xóa ảnh QR cũ nếu có
+      if (device.image) {
+        try {
+          const oldImageRef = storage().refFromURL(device.image);
+          await oldImageRef.delete();
+        } catch (error) {
+          console.log('Error deleting old QR image:', error);
+        }
+      }
       const updatedDeviceData = {
         name,
         type,

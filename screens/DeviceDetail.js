@@ -11,6 +11,7 @@ import { PermissionsAndroid } from 'react-native';
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
 import Share from 'react-native-share';
 import XLSX from 'xlsx';
+import Toast from 'react-native-toast-message';
 
 const DeviceDetail = ({ route, navigation }) => {
   const { deviceId } = route.params;
@@ -102,6 +103,16 @@ const DeviceDetail = ({ route, navigation }) => {
   const handleSave = async () => {
     try {
       setLoading(true);
+
+      // Xóa ảnh QR cũ nếu có
+      if (device.image) {
+        try {
+          const oldImageRef = storage().refFromURL(device.image);
+          await oldImageRef.delete();
+        } catch (error) {
+          console.log('Error deleting old QR image:', error);
+        }
+      }
 
       const updatedDeviceData = {
         name,
@@ -286,28 +297,36 @@ const DeviceDetail = ({ route, navigation }) => {
   };
 
   const handleDelete = async () => {
-    Alert.alert(
-      'Xóa thiết bị',
-      'Bạn có chắc chắn muốn xóa thiết bị này không?',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Xóa',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await firestore().collection('DEVICES').doc(deviceId).delete();
-              Alert.alert('Thông báo', 'Thiết bị đã được xóa thành công');
-              navigation.goBack();
-            } catch (error) {
-              console.error('Lỗi khi xóa thiết bị: ', error);
-              Alert.alert('Thông báo', 'Xóa thiết bị thất bại');
-            }
-          },
-        },
-      ],
-      { cancelable: true }
-    );
+    try {
+      setLoading(true);
+
+      // Xóa ảnh QR nếu có
+      if (device.image) {
+        try {
+          const imageRef = storage().refFromURL(device.image);
+          await imageRef.delete();
+        } catch (error) {
+          console.log('Error deleting QR image:', error);
+        }
+      }
+
+      // Xóa thiết bị từ Firestore
+      await firestore().collection('DEVICES').doc(device.id).delete();
+
+      setLoading(false);
+      navigation.goBack();
+      Toast.show({
+        type: 'success',
+        text1: 'Xóa thiết bị thành công',
+      });
+    } catch (error) {
+      setLoading(false);
+      console.log('Error deleting device:', error);
+      Toast.show({
+        type: 'error',
+        text1: 'Có lỗi xảy ra khi xóa thiết bị',
+      });
+    }
   };
 
   if (!device) {
