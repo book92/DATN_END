@@ -11,7 +11,6 @@ import { PermissionsAndroid } from 'react-native';
 import RNHTMLtoPDF from 'react-native-html-to-pdf';
 import Share from 'react-native-share';
 import XLSX from 'xlsx';
-import Toast from 'react-native-toast-message';
 
 const DeviceDetail = ({ route, navigation }) => {
   const { deviceId } = route.params;
